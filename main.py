@@ -68,7 +68,7 @@ class PointToPointUdpReceiver:
                 print("no ip")
                 continue
             try:
-                print("目标ip:",self.target_ip)
+                #print("目标ip:",self.target_ip)
                 data, addr = self.sock.recvfrom(65535)
                 self.parse_data(data,addr)
                 if addr[0] == self.target_ip:  # Check if the message is from the target IP
@@ -175,9 +175,9 @@ class InfoViewer(QQuickPaintedItem):
         if self.ready and self.painter.isActive() and n >= 0 and n < self.MAX_PLAYER:
             self.drawSignal.emit(n,info)
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        index = self.getAreaIndex(event.pos())
+        index, team = self.getAreaIndex(event.pos())
         for info in self.infoReceiver.info.values():
-            if info.robot_id == index:
+            if info.robot_id == index and info.team == team:
                 if event.button() == Qt.MouseButton.LeftButton:
                     self.infoReceiver.selected.clear()
                 else :
@@ -194,24 +194,38 @@ class InfoViewer(QQuickPaintedItem):
     @pyqtSlot(int,zss.Multicast_Status)
     def paintInfo(self,n,info):
         # fill background
-        self.painter.setPen(QColor(255,255,255))
-        self.painter.setBrush(QColor(255,255,255))
-        self.painter.drawRect(QRectF(self._x(n,0.0), self._y(n,0.0), self._w(n,0.3),self._h(n,1.0)))
-        #self.painter.drawRect(QRectF(self._x(10, 0.35), self._y(10, 0.0), self._w(10, 1.0), self._h(10, 1.0)))
+        if info.team == 1:
+            self.painter.setPen(QColor(255,255,255))
+            self.painter.setBrush(QColor(255,255,255))
+            self.painter.drawRect(QRectF(self._x(n,0.0), self._y(n,0.0), self._w(n,0.3),self._h(n,1.0)))
 
-        self.painter.setPen(QColor(0,0,0) if n not in self.infoReceiver.selected else QColor(255,0,0))
-        self.painter.setBrush(Qt.BrushStyle.NoBrush)
-        self.painter.setFont(QFont('Arial', 10))
+
+            self.painter.setPen(QColor(0,0,0) if n not in self.infoReceiver.selected else QColor(255,0,0))
+            self.painter.setBrush(Qt.BrushStyle.NoBrush)
+            self.painter.setFont(QFont('Arial', 10))
         #print("infraraed:",self.pointtopointRecv.robot_status.infrared)
-        self.painter.drawRect(QRectF(self._x(n,0.01), self._y(n,0.05), self._w(n,0.28),self._h(n,0.9)))
-        self.painter.drawText(QRectF(self._x(n,0.0), self._y(n,0.0), self._w(n,0.3),self._h(n,1.0)), Qt.AlignmentFlag.AlignCenter, info.ip)
+            self.painter.drawRect(QRectF(self._x(n,0.01), self._y(n,0.05), self._w(n,0.28),self._h(n,0.9)))
+            self.painter.drawText(QRectF(self._x(n,0.0), self._y(n,0.0), self._w(n,0.3),self._h(n,1.0)), Qt.AlignmentFlag.AlignCenter, info.ip)
         #if self.pointtopointRecv.receive_flag is True:
          #   self.painter.drawText(QRectF(self._x(10,0.35), self._y(10,0.0), self._w(10,1.0), self._h(10,1.0)),Qt.AlignmentFlag.AlignCenter, self.pointtopointRecv.robot_status.infrared)
 
+        else:
+            self.painter.setPen(QColor(255,255,255))
+            self.painter.setBrush(QColor(255,255,255))
+            self.painter.drawRect(QRectF(self._x(n,0.74), self._y(n,0.0), self._w(n,1.0),self._h(n,1.0)))
 
 
+            self.painter.setPen(QColor(0,0,0) if n not in self.infoReceiver.selected else QColor(255,0,0))
+            self.painter.setBrush(Qt.BrushStyle.NoBrush)
+            self.painter.setFont(QFont('Arial', 10))
+            #print("infraraed:",self.pointtopointRecv.robot_status.infrared)
 
+            self.painter.drawRect(QRectF(self._x(n,0.75), self._y(n,0.05), self._w(n,0.24),self._h(n,0.9)))
+
+            self.painter.drawText(QRectF(self._x(n,0.72), self._y(n,0.0), self._w(n,0.3),self._h(n,1.0)), Qt.AlignmentFlag.AlignCenter, info.ip)
+            print("wwwww",info.ip)
         self.update(self._area(n))
+
     def paint(self, painter):
         if self.ready:
             painter.drawImage(QRectF(0,0,self.width(),self.height()),self.image)
@@ -228,9 +242,17 @@ class InfoViewer(QQuickPaintedItem):
         self.ready = True
     def getAreaIndex(self,pos):
         yIndex = int(pos.y()/(self.height()/self.MAX_PLAYER))
-        return yIndex
+        if pos.x() < 0.5 *self.width() :
+            team = 1
+        else:
+            team = 2
+        return yIndex,team
+    def _area_blue(self,n):
+        return QRect(int(self._x(n,0)), int(self._y(n,0)), int(self._w(n,0.3)),int(self._h(n,1)))
+    def _area_yellow(self,n):
+        return QRect(int(self._x(n,0.7)), int(self._y(n, 0)), int(self._w(n,0.3)), int(self._h(n, 1.0)))
     def _area(self,n):
-        return QRect(int(self._x(n,0)), int(self._y(n,0)), int(self._w(n,1)),int(self._h(n,1)))
+        return QRect(int(self._x(n,0)), int(self._y(n, 0)), int(self._w(n,1.0)), int(self._h(n, 1.0)))
     def _x(self,n,v):
         return self.width()*(v)
     def _y(self,n,v):
@@ -261,21 +283,22 @@ class InfoViewer(QQuickPaintedItem):
         #self.painter.begin(self)
 
         self.painter.setPen(QColor(255,255,255))
-        self.painter.setBrush(QColor(173, 216, 230))
+        if info.team == 1:
+            team = "蓝"
+            self.painter.setBrush(QColor(173, 216, 230))
+        else:
+            team = "黄"
+            self.painter.setBrush(QColor(255, 255, 153))
         for i in range(16):
-            self.painter.drawRect(QRectF(self._x(i,0.32), self._y(i,0.0), self._w(i,1.0),self._h(i,1.0)))
+            self.painter.drawRect(QRectF(self._x(i,0.32), self._y(i,0.0), self._w(i,0.41),self._h(i,1.0)))
         #self.painter.drawRect(QRectF(self._x(10, 0.35), self._y(10, 0.0), self._w(10, 1.0), self._h(10, 1.0)))
-        self.painter.setFont(QFont('Helvetica', 12))
+        self.painter.setFont(QFont('Helvetica', 11))
         self.painter.setPen(QColor(0,0,0))
 
         if self.pointtopointRecv.receive_flag is True:
 
             battery_str = "{:.3f}".format(info.battery)
             capacitance_str = "{:.3f}".format(info.capacitance)
-            if info.team ==1:
-                team="蓝"
-            else :
-                team="黄"
             angle_z_str="{:.3f}".format(info.imu_data[10])
             angle_y_str = "{:.3f}".format(info.imu_data[9])
             angle_x_str = "{:.3f}".format(info.imu_data[8])
